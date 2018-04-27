@@ -11,7 +11,11 @@ Created on Thu Apr 26 08:53:46 2018
 import tkinter as tk
 import matplotlib as mpl
 import matplotlib.animation as animation
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+try:
+    from matplotlib.backends.backend_tkagg import FigureCanvasTk, NavigationToolbar2Tk
+except ImportError:
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvasTk
+    from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg as NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -48,6 +52,7 @@ class Stream:
         self.step = 1
         self.backup = (np.empty(10000), np.empty(10000), np.empty(10000))
         self.calculFunc = calculFunc
+        self.lines = False
         
     def __next__(self):
         
@@ -61,10 +66,16 @@ class Stream:
         self.status+=self.step
         self.i += 1
         return x, y, z
-
+    
+    def set_show_lines(self):
+        self.lines = not self.lines
+    
+    
     def get_backup(self):
-        return self.backup[0][:self.i], self.backup[1][:self.i], self.backup[2][:self.i]
-
+        if self.lines: 
+            return self.backup[0][:self.i], self.backup[1][:self.i], self.backup[2][:self.i]
+        else:
+            return np.empty(0), np.empty(0), np.empty(0)
     def setSpeed(self, x):
         self.step = float(x)
         
@@ -80,7 +91,7 @@ class FigureExplorer(tk.Frame):
         self.figure = figure
         self.ax = ax
         
-        canvas = FigureCanvasTkAgg(figure, self)
+        canvas = FigureCanvasTk(figure, self)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True) # Pack
         
@@ -96,6 +107,13 @@ class FigureExplorer(tk.Frame):
         ax.set_zlabel("Z")
         
         self.ani = Animation(figure, ax, stream)
+        
+        
+def create_static(method, obj, *args, **kwargs):
+    def static(*args, **kwargs):
+        print(*args, kwargs)
+        return method( *args, **kwargs)
+    return static
         
 class Main(tk.Frame):
     
@@ -119,6 +137,7 @@ class Main(tk.Frame):
                              orient=tk.HORIZONTAL, resolution=0.01, command=setter)
             scale.set(current)
             scale.pack()
+        tk.Checkbutton(self.editor_frame, text="Lines", command=create_static(self.stream.set_show_lines, self.stream)).pack()
         
         
 
